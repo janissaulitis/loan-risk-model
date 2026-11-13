@@ -5,12 +5,14 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+import kit
 import model as M
 
 M = importlib.reload(M)  # Streamlit Cloud keeps old copies of imported files after an update; always use the latest
+kit = importlib.reload(kit)
 
-st.set_page_config(page_title="Loan risk model", page_icon="📊", layout="wide")
-st.markdown("<style>.block-container{max-width:1240px;padding-top:2.2rem}</style>", unsafe_allow_html=True)
+kit.page("Early Call", "Find the loans that will go late, and call before they do", mark="📞",
+         meta=f"Trained on months 1–{M.TRAIN_UNTIL} · tested on months {M.TRAIN_UNTIL + 1}–24")
 
 GREEN, RED = "#2fb985", "#e5484d"
 
@@ -37,10 +39,9 @@ def reason_chart(rs):
                  x_label="", y_label="Effect on risk, compared with an average applicant")
 
 
-# ---------------------------------------------------------------- header
-st.title("Which loans will go late?")
-st.markdown("**Predicts which new loans are likely to be 30+ days late, so the team can call those customers early, "
-            "and shows the reasons behind every score.** Tested on six months of loans the model never saw.")
+# ---------------------------------------------------------------- intro
+st.markdown("Scores every new loan for the risk of going **30+ days late**, puts the riskiest on a call list for the "
+            "collections team, and shows **the reasons behind every score**. Tested on six months of loans it never saw.")
 with st.container(horizontal=True):
     with st.popover("How it works"):
         st.markdown(
@@ -50,13 +51,12 @@ with st.container(horizontal=True):
             "4. **Business case:** what calling the riskiest 10% early is worth per month, with your own assumptions.\n"
             "5. **Fairness & limits:** what the model deliberately does not use, how it behaves by market, and what to watch."
         )
-st.caption(f"Demo with invented data: {len(m.train) + len(m.test):,} loans over 24 months in 6 markets. "
-           f"Trained on months 1–{M.TRAIN_UNTIL}, tested on months {M.TRAIN_UNTIL + 1}–24.")
+st.caption(f"{len(m.train) + len(m.test):,} invented loans over 24 months in 6 markets.")
 
 c = st.columns(4)
-c[0].metric("Late loans among the 10% it flags", f"{X['Explainable model']['precision_top10']:.0%}",
-            help="Of the loans the model would call about, how many really went 30+ days late.")
-c[1].metric("Same with a simple rule", f"{X['Rule']['precision_top10']:.0%}",
+c[0].metric("Hit rate of the call list", f"{X['Explainable model']['precision_top10']:.0%}",
+            help="Of the 10% of loans the model puts on the call list, how many really went 30+ days late.")
+c[1].metric("With a simple rule", f"{X['Rule']['precision_top10']:.0%}",
             help="Rule: a past late payment, or payment above 45% of income.")
 c[2].metric("Average late rate", f"{ev['late_rate_test']:.0%}", help="If you called people at random.")
 c[3].metric("Accuracy (AUC)", f"{X['Explainable model']['auc']:.2f}",
@@ -64,7 +64,7 @@ c[3].metric("Accuracy (AUC)", f"{X['Explainable model']['auc']:.2f}",
                  f"{X['Benchmark (black box)']['auc']:.2f}, no better, so the explainable model is used.")
 
 tab_list, tab_try, tab_eval, tab_biz, tab_fair = st.tabs(
-    ["📋 Call list", "🧮 Try an application", "🎯 How good is it", "💶 Business case", "⚖️ Fairness & limits"])
+    ["Call list", "Try an application", "How good is it", "Business case", "Fairness & limits"])
 
 # ---------------------------------------------------------------- call list
 with tab_list:
@@ -194,6 +194,4 @@ with tab_fair:
         "- Risk drifts over time. Check every month: hit rate of the call list, predicted vs actual late rate, "
         "results by market. Re-train when they slip.")
 
-st.divider()
-st.caption("Built with Claude Code by Jānis Saulītis · scikit-learn, Streamlit · engine: `model.py` · "
-           "data generator: `data/make_loans.py`")
+kit.footer("scikit-learn · model.py")
