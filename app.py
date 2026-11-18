@@ -40,8 +40,12 @@ def reason_chart(rs):
 
 
 # ---------------------------------------------------------------- intro
-st.markdown("Scores every new loan for the risk of going **30+ days late**, puts the riskiest on a call list for the "
-            "collections team, and shows **the reasons behind every score**. Tested on six months of loans it never saw.")
+hit, rule, base = X['Explainable model']['precision_top10'], X['Rule']['precision_top10'], ev['late_rate_test']
+kit.answer("The call list works", f"{hit:.0%} of the loans on its call list really go 30+ days late",
+           f"That is <b>{hit / rule:.1f}×</b> better than a simple rule ({rule:.0%}) and <b>{hit / base:.1f}×</b> better than "
+           "calling at random. Tested on six months of loans it never saw, with the reasons behind every score.",
+           [("Call-list hit rate", f"{hit:.0%}"), ("Simple rule", f"{rule:.0%}"), ("At random", f"{base:.0%}"),
+            ("Accuracy (AUC)", f"{X['Explainable model']['auc']:.2f}")])
 with st.container(horizontal=True):
     with st.popover("How it works"):
         st.markdown(
@@ -52,16 +56,6 @@ with st.container(horizontal=True):
             "5. **Fairness & limits:** what the model deliberately does not use, how it behaves by market, and what to watch."
         )
 st.caption(f"{len(m.train) + len(m.test):,} invented loans over 24 months in 6 markets.")
-
-c = st.columns(4)
-c[0].metric("Hit rate of the call list", f"{X['Explainable model']['precision_top10']:.0%}",
-            help="Of the 10% of loans the model puts on the call list, how many really went 30+ days late.")
-c[1].metric("With a simple rule", f"{X['Rule']['precision_top10']:.0%}",
-            help="Rule: a past late payment, or payment above 45% of income.")
-c[2].metric("Average late rate", f"{ev['late_rate_test']:.0%}", help="If you called people at random.")
-c[3].metric("Accuracy (AUC)", f"{X['Explainable model']['auc']:.2f}",
-            help="0.5 = coin flip, 1.0 = perfect. A more complex 'black box' model scored "
-                 f"{X['Benchmark (black box)']['auc']:.2f}, no better, so the explainable model is used.")
 
 tab_list, tab_try, tab_eval, tab_biz, tab_fair = st.tabs(
     ["Call list", "Try an application", "How good is it", "Business case", "Fairness & limits"])
