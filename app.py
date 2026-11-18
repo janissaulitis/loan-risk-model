@@ -11,7 +11,7 @@ import model as M
 M = importlib.reload(M)  # Streamlit Cloud keeps old copies of imported files after an update; always use the latest
 kit = importlib.reload(kit)
 
-kit.page("Early Call", "Find the loans that will go late, and call before they do", mark="📞",
+kit.page("Early Call", "Find the loans that will go late, and call before they do", mark="phone", icon="📞",
          meta=f"Trained on months 1–{M.TRAIN_UNTIL} · tested on months {M.TRAIN_UNTIL + 1}–24")
 
 GREEN, RED = "#2fb985", "#e5484d"
@@ -32,11 +32,7 @@ def reason_text(rs):
 
 
 def reason_chart(rs):
-    names = [n[:34] for n, _ in rs]
-    d = pd.DataFrame({"lowers risk": [min(v, 0) for _, v in rs], "raises risk": [max(v, 0) for _, v in rs]},
-                     index=pd.Index(names, name="Reason"))
-    st.bar_chart(d, horizontal=True, height=70 + 36 * len(rs), color=[GREEN, RED], sort=False,
-                 x_label="", y_label="Effect on risk, compared with an average applicant")
+    kit.contrib([(n, v) for n, v in rs])
 
 
 # ---------------------------------------------------------------- intro
@@ -72,11 +68,12 @@ with tab_list:
     for _, r in top.iterrows():
         rs = M.reasons(m, top.loc[[r.name]])
         rows.append({"Loan": r.loan_id, "Market": r.market, "Amount €": int(r.amount_eur),
-                     "Risk": r.risk * 100, "Top reasons": reason_text(rs),
+                     "Risk": r.risk, "Top reasons": reason_text(rs),
                      "Actually went late": "yes" if r.late_30 else "no"})
-    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch",
-                 column_config={"Risk": st.column_config.ProgressColumn(format="%.0f%%", min_value=0, max_value=100),
-                                "Top reasons": st.column_config.TextColumn(width="large")})
+    kit.table(rows, [kit.col("Loan", "Loan", "muted"), kit.col("Market", "Market", "lang"),
+                     kit.col("Amount €", "Amount €", "num", fmt=lambda v: f"{v:,}"),
+                     kit.col("Risk", "Risk", "meter", {"warn": 0.3, "bad": 0.5}), kit.col("Top reasons", "Top reasons", "wrap"),
+                     kit.col("Went late", "Actually went late", "chip", {"yes": "bad", "no": "good"})], max_height=440)
     hit = top.late_30.mean()
     st.caption(f"▲ raises risk · ▼ lowers risk. Hindsight check: {hit:.0%} of this list really went late, "
                f"against {month.late_30.mean():.0%} of all loans that month.")
@@ -106,12 +103,15 @@ with tab_try:
         "previous_late": prev_late, "days_since_last_loan": (10 if soon else 200) if prev else -1,
         "application_hour": 2 if night else 14}])
     p = float(M.risk(m, app_row)[0])
-    level = "🔴 high" if p >= 0.30 else "🟠 medium" if p >= 0.15 else "🟢 low"
+    level = "high" if p >= 0.30 else "medium" if p >= 0.15 else "low"
     with result:
-        l, r = st.columns([1, 2])
-        l.metric("Risk of going 30+ days late", f"{p:.0%}", help=f"Average across all loans: {ev['late_rate_test']:.0%}")
-        l.markdown(f"Risk level: **{level}**  \nPayment is **{payment / income:.0%} of income**.")
+        l, r = st.columns([2, 3], gap="large")
+        with l:
+            kit.answer("Risk of going 30+ days late", f"{p:.0%}, {level}",
+                       f"Payment is <b>{payment / income:.0%} of income</b>. The average loan is {ev['late_rate_test']:.0%}.",
+                       tone="bad" if p >= 0.30 else "warn" if p >= 0.15 else "good")
         with r:
+            st.markdown("#### Why")
             reason_chart(M.reasons(m, app_row, top=5))
         st.divider()
 
@@ -119,12 +119,10 @@ with tab_try:
 with tab_eval:
     st.markdown(f"Tested on **{ev['n_test']:,} loans from months {M.TRAIN_UNTIL + 1}–24**, which the model never saw "
                 "during training. That's how it would meet the future.")
-    t = pd.DataFrame([{"Approach": k, "Accuracy (AUC)": v["auc"], "Late among the flagged 10%": v["precision_top10"] * 100,
-                       "Share of all late loans caught": v["capture_top10"] * 100} for k, v in X.items()])
-    st.dataframe(t, hide_index=True, width="stretch", column_config={
-        "Accuracy (AUC)": st.column_config.NumberColumn(format="%.3f", help="0.5 = coin flip, 1.0 = perfect"),
-        "Late among the flagged 10%": st.column_config.NumberColumn(format="%.0f%%"),
-        "Share of all late loans caught": st.column_config.NumberColumn(format="%.0f%%")})
+    kit.table([{"a": k, "auc": f"{v['auc']:.3f}", "p": v["precision_top10"], "c": v["capture_top10"],
+                "u": "In use" if k == "Explainable model" else ""} for k, v in X.items()],
+              [kit.col("Approach", "a", "strong"), kit.col("", "u", "chip", {"In use": "good"}), kit.col("Accuracy (AUC)", "auc", "num"),
+               kit.col("Late among the flagged 10%", "p", "meter"), kit.col("Share of all late loans caught", "c", "meter")])
     st.markdown(
         f"- The model nearly **doubles the hit rate** of a simple rule: {X['Explainable model']['precision_top10']:.0%} "
         f"of the people it flags really go late, against {X['Rule']['precision_top10']:.0%} for the rule.\n"
@@ -135,9 +133,8 @@ with tab_eval:
         "isn't in any application. That is normal for credit risk.")
     st.markdown("**Does the predicted risk match reality?**")
     cal = M.calibration(m)
-    cal.index = [f"Group {i + 1}" for i in range(len(cal))]
-    st.line_chart(cal.rename(columns={"predicted": "Predicted", "actual": "Actually late"}), height=260,
-                  color=[GREEN, "#f2c230"])
+    kit.pairs([(f"Group {i + 1}", float(r.predicted), float(r.actual)) for i, r in enumerate(cal.itertuples())],
+              ("Predicted", "Actually late"), fmt=lambda x: f"{x:.1%}")
     st.caption(f"Loans grouped from lowest to highest predicted risk. The ranking holds, but late payments rose from "
                f"{ev['late_rate_train']:.1%} in the training months to {ev['late_rate_test']:.1%} in the test months, "
                "so the model slightly under-predicts. In production it would be re-checked monthly and re-calibrated "
@@ -155,12 +152,10 @@ with tab_biz:
     loss = b.number_input("Cost of one late loan €", 20, 2000, 150, 10,
                           help="Collection work, fees written off, part of the loan lost.")
     bc = M.business_case(m, share, cost, prevent, loss, monthly)
-    r = st.columns(4)
-    r[0].metric("Calls per month", f"{bc['calls']:,.0f}")
-    r[1].metric("Late loans among them", f"{bc['late_among_called']:,.0f}")
-    r[2].metric("Late payments prevented", f"{bc['prevented']:,.0f}")
-    r[3].metric("Net value per month", f"€{bc['net']:,.0f}", delta=f"€{bc['saved']:,.0f} saved − €{bc['cost']:,.0f} calls",
-                delta_color="off")
+    kit.answer("With your numbers", f"Calling the riskiest {share:.0%} early is worth about €{bc['net']:,.0f} a month",
+               f"€{bc['saved']:,.0f} of late-payment costs avoided, minus €{bc['cost']:,.0f} spent on calls.",
+               [("Calls a month", f"{bc['calls']:,.0f}"), ("Late loans among them", f"{bc['late_among_called']:,.0f}"),
+                ("Late payments prevented", f"{bc['prevented']:,.0f}")], tone="good" if bc["net"] > 0 else "warn")
     st.caption("Uses the model's real hit rate on the test months; the money assumptions are yours. "
                "Calling at random would reach far fewer late loans for the same cost.")
 
@@ -170,13 +165,10 @@ with tab_fair:
                 "that stands in for them. Market (the country of the loan) is used, because prices and rules differ by country.")
     st.markdown("**How it behaves by market** (flagging the riskiest 10% overall):")
     bm = M.by_market(m)
-    for col in ["Late rate", "Flagged", "Late loans caught"]:
-        bm[col] = bm[col] * 100
-    st.dataframe(bm, hide_index=True, width="stretch", column_config={
-        "Late rate": st.column_config.NumberColumn(format="%.0f%%"),
-        "Flagged": st.column_config.NumberColumn(format="%.0f%%"),
-        "Late loans caught": st.column_config.NumberColumn(format="%.0f%%"),
-        "AUC": st.column_config.NumberColumn(format="%.2f")})
+    kit.table(bm.to_dict("records"),
+              [kit.col("Market", "Market", "lang"), kit.col("Loans", "Loans", "num", fmt=lambda v: f"{v:,}"),
+               kit.col("Late rate", "Late rate", "meter", {"warn": 0.15, "bad": 0.25}), kit.col("Flagged", "Flagged", "meter"),
+               kit.col("Late loans caught", "Late loans caught", "meter"), kit.col("AUC", "AUC", "num", fmt=lambda v: f"{v:.2f}")])
     st.caption("Markets with more late loans get more calls, which is the point. What to watch: the model ranks "
                "equally well in every market (similar AUC), so no market is served by a worse model.")
     st.markdown(
