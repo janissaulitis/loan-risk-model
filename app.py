@@ -1,3 +1,4 @@
+import os
 """Loan risk model with reasons. Run: streamlit run app.py"""
 import importlib
 
@@ -42,15 +43,14 @@ kit.answer("The call list works", f"{hit:.0%} of the loans on its call list real
            "calling at random. Tested on six months of loans it never saw, with the reasons behind every score.",
            [("Call-list hit rate", f"{hit:.0%}"), ("Simple rule", f"{rule:.0%}"), ("At random", f"{base:.0%}"),
             ("Accuracy (AUC)", f"{X['Explainable model']['auc']:.2f}")])
-with st.container(horizontal=True):
-    with st.popover("How it works"):
-        st.markdown(
-            "1. **Call list:** this month's loans, riskiest first, each with its top 3 reasons.\n"
-            "2. **Try an application:** change income, payment, job time or history and watch the risk and reasons move.\n"
-            "3. **How good is it:** compared with a simple rule and with a more complex `black box` model, on months the model never saw.\n"
-            "4. **Business case:** what calling the riskiest 10% early is worth per month, with your own assumptions.\n"
-            "5. **Fairness & limits:** what the model deliberately does not use, how it behaves by market, and what to watch."
-        )
+kit.demo(os.environ.get("DEMO_VIDEO", "https://janis-saulitis-portfolio.netlify.app/media/early.mp4"), "Early Call in 1 minute",
+         (
+             "1. **Call list:** this month's loans, riskiest first, each with its top 3 reasons.\n"
+             "2. **Try an application:** change income, payment, job time or history and watch the risk and reasons move.\n"
+             "3. **How good is it:** compared with a simple rule and with a more complex `black box` model, on months the model never saw.\n"
+             "4. **Business case:** what calling the riskiest 10% early is worth per month, with your own assumptions.\n"
+             "5. **Fairness & limits:** what the model deliberately does not use, how it behaves by market, and what to watch."
+         ))
 st.caption(f"{len(m.train) + len(m.test):,} invented loans over 24 months in 6 markets.")
 
 tab_list, tab_try, tab_eval, tab_biz, tab_fair = st.tabs(
