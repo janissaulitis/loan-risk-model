@@ -12,7 +12,7 @@ M = importlib.reload(M)  # Streamlit Cloud keeps old copies of imported files af
 kit = importlib.reload(kit)
 
 kit.page("Early Call", "Find the loans that will go late, and call before they do", mark="phone", icon="📞",
-         meta=f"Trained on months 1–{M.TRAIN_UNTIL} · tested on months {M.TRAIN_UNTIL + 1}–24")
+         meta=f"Trained on months 1–{M.TRAIN_UNTIL} · tested on months {M.TRAIN_UNTIL + 1}–24", theme="amber")
 
 GREEN, RED = "#2fb985", "#e5484d"
 
@@ -54,7 +54,7 @@ with st.container(horizontal=True):
 st.caption(f"{len(m.train) + len(m.test):,} invented loans over 24 months in 6 markets.")
 
 tab_list, tab_try, tab_eval, tab_biz, tab_fair = st.tabs(
-    ["Call list", "Try an application", "How good is it", "Business case", "Fairness & limits"])
+    ["F1 Call list", "F2 Try an application", "F3 How good", "F4 Business case", "F5 Fairness"])
 
 # ---------------------------------------------------------------- call list
 with tab_list:
@@ -68,19 +68,25 @@ with tab_list:
     for _, r in top.iterrows():
         rs = M.reasons(m, top.loc[[r.name]])
         rows.append({"Loan": r.loan_id, "Market": r.market, "Amount €": int(r.amount_eur),
-                     "Risk": r.risk, "Top reasons": reason_text(rs),
+                     "Risk": r.risk, "Top reasons": " · ".join(n.lower() for n, v in rs if v > 0) or "mixed signals",
+                     "When": "Call today" if r.risk >= 0.6 else "This week",
                      "Actually went late": "yes" if r.late_30 else "no"})
     kit.table(rows, [kit.col("Loan", "Loan", "muted"), kit.col("Market", "Market", "lang"),
                      kit.col("Amount €", "Amount €", "num", fmt=lambda v: f"{v:,}"),
-                     kit.col("Risk", "Risk", "meter", {"warn": 0.3, "bad": 0.5}), kit.col("Top reasons", "Top reasons", "wrap"),
+                     kit.col("Risk", "Risk", "num", fmt=lambda v: f"{v:.2f}"), kit.col("Why it's on the list", "Top reasons", "wrap"),
+                     kit.col("When", "When", "chip", {"Call today": "bad", "This week": "warn"}),
                      kit.col("Went late", "Actually went late", "chip", {"yes": "bad", "no": "good"})], max_height=440)
     hit = top.late_30.mean()
-    st.caption(f"▲ raises risk · ▼ lowers risk. Hindsight check: {hit:.0%} of this list really went late, "
+    st.caption(f"↑ raises risk · ↓ lowers risk. Hindsight check: {hit:.0%} of this list really went late, "
                f"against {month.late_30.mean():.0%} of all loans that month.")
     pick = st.selectbox("See the full breakdown for", top.loan_id.tolist())
     one = top[top.loan_id == pick]
-    st.markdown(f"**{pick}: {float(one.risk.iloc[0]):.0%} risk of going 30+ days late**")
-    reason_chart(M.reasons(m, one, top=6))
+    o = one.iloc[0]
+    with st.container(border=True):
+        st.markdown(f"<div class='k-detail'><b>{pick}</b><span class='k-chip bad'>{float(o.risk):.0%} risk of 30+ days late</span>"
+                    f"<span class='m'>{' · '.join(x for x in [str(o.market), f'€{int(o.amount_eur):,}', f"{o['product']} loan", f'applied via {o.channel}'] if x)}</span></div>",
+                    unsafe_allow_html=True)
+        reason_chart(M.reasons(m, one, top=6))
 
 # ---------------------------------------------------------------- try an application
 with tab_try:

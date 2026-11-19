@@ -1,13 +1,19 @@
+[theme]
+font = "IBM Plex Sans Condensed:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "IBM Plex Sans Condensed:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap, sans-serif"
+baseFontWeight = 500
+baseRadius = "0"
+buttonRadius = "0"
+showWidgetBorder = true
+
 [theme.light]
-primaryColor = "#127a5b"
-backgroundColor = "#f5f6f8"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#101828"
-codeTextColor = "#8a5a00"
+primaryColor = "#B85F00"
+backgroundColor = "#FBF8F2"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#141210"
 
 [theme.dark]
-primaryColor = "#3dd39b"
-backgroundColor = "#0f1720"
-secondaryBackgroundColor = "#16212c"
-textColor = "#e6edf3"
-codeTextColor = "#f5b83d"
+primaryColor = "#FFA028"
+backgroundColor = "#0A0A0A"
+secondaryBackgroundColor = "#161412"
+textColor = "#F2E8D8"
