@@ -1,0 +1,94 @@
+EARLY CALL
+
+Find the loans that will go late, and call before they do
+DEMO · INVENTED DATA
+Trained on months 1–18 · tested on months 19–24
+THE CALL LIST WORKS
+
+40% of the loans on its call list really go 30+ days late
+
+That is 1.9× better than a simple rule (21%) and 2.7× better than calling at random. Tested on six months of loans it never saw, with the reasons behind every score.
+CALL-LIST HIT RATE
+40%
+SIMPLE RULE
+21%
+AT RANDOM
+15%
+ACCURACY (AUC)
+0.72
+
+▶ 1-min demo
+
+How it works
+
+expand_more
+
+6,472 invented loans over 24 months in 6 markets.
+
+F1 CALL LIST
+
+F2 TRY AN APPLICATION
+
+F3 HOW GOOD
+
+F4 BUSINESS CASE
+
+F5 FAIRNESS
+
+What the model deliberately does not use: gender, age, nationality, family status, or anything that stands in for them. Market (the country of the loan) is used, because prices and rules differ by country.
+
+How it behaves by market (flagging the riskiest 10% overall):
+
+MARKET	LOANS	LATE RATE	FLAGGED	LATE LOANS CAUGHT	AUC
+ES	392	
+12%
+	
+6%
+	
+19%
+	0.71
+LT	211	
+13%
+	
+3%
+	
+11%
+	0.77
+LV	226	
+18%
+	
+8%
+	
+22%
+	0.70
+PE	176	
+19%
+	
+21%
+	
+55%
+	0.80
+PL	346	
+16%
+	
+13%
+	
+34%
+	0.71
+RO	289	
+14%
+	
+12%
+	
+20%
+	0.67
+
+Markets with more late loans get more calls, which is the point. What to watch: the model ranks equally well in every market (similar AUC), so no market is served by a worse model.
+
+Limits, said plainly
+
+The data is invented. A real version starts with the lender's own history, and the same tests.
+It's meant for who to contact early, not for approving or refusing loans. A model that decides on credit for people counts as high-risk under the EU AI Act and needs much more: documentation, human oversight and the right to an explanation.
+Risk drifts over time. Check every month: hit rate of the call list, predicted vs actual late rate, results by market. Re-train when they slip.
+Built by Jānis Saulītis with AI · scikit-learn · model.py
+See more tools
