@@ -22,10 +22,10 @@ with sync_playwright() as p:
     if mode == "test":
         page.wait_for_timeout(5_000)
         errors = app.locator("[data-testid=stException]")
-        for i, tab in enumerate(["Call list", "Try an application", "How good is it", "Business case", "Fairness & limits"]):
+        for i, tab in enumerate(["F1 Call list", "F2 Try an application", "F3 How good", "F4 Business case", "F5 Fairness"]):
             app.get_by_role("tab", name=tab).click()
             page.wait_for_timeout(2_500)
-            page.screenshot(path=str(out / f"{i}_{tab.split()[0].lower()}.png"))
+            page.screenshot(path=str(out / f"{i}_{tab.split()[1].lower()}.png"))
             print(f"{tab}: {errors.count()} errors")
         (out / "page.txt").write_text(app.locator("[data-testid=stMain]").inner_text())
         if errors.count():
