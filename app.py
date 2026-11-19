@@ -1,5 +1,5 @@
-import os
 """Loan risk model with reasons. Run: streamlit run app.py"""
+import os
 import importlib
 
 import numpy as np
